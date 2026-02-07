@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong2.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'providers/game_provider.dart';
 import 'widgets/game_hud.dart';
 import 'widgets/game_map_widget.dart';
@@ -8,9 +9,11 @@ import 'widgets/qr_task_widget.dart';
 import 'widgets/abcd_task_widget.dart';
 import 'widgets/ai_chat_widget.dart';
 import 'widgets/incoming_call_widget.dart';
+import 'widgets/photo_task_widget.dart';
 import '../../../shared/models/task_model.dart';
 import '../../../shared/providers/location_provider.dart';
 import '../../shared/widgets/app_drawer.dart';
+import '../../shared/widgets/grid_background.dart';
 
 class GameScreen extends ConsumerStatefulWidget {
   const GameScreen({super.key});
@@ -22,11 +25,6 @@ class GameScreen extends ConsumerStatefulWidget {
 class _GameScreenState extends ConsumerState<GameScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final String _lang = 'pl'; // Future: use a language provider
-
-import 'package:flutter_animate/flutter_animate.dart';
-import '../../shared/widgets/grid_background.dart';
-
-// ... inside _GameScreenState ...
 
   @override
   Widget build(BuildContext context) {
@@ -155,7 +153,7 @@ import '../../shared/widgets/grid_background.dart';
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (task.taskType != 'AI_CHAT' && task.taskType != 'INCOMING_CALL')
+          if (task.taskType != 'AI_CHAT' && task.taskType != 'INCOMING_CALL' && task.taskType != 'PHOTO_CHALLENGE')
             Padding(
               padding: const EdgeInsets.only(bottom: 24.0),
               child: Text(
@@ -191,6 +189,11 @@ import '../../shared/widgets/grid_background.dart';
           secretPassword: task.contentData.secretPassword ?? '',
           initialMessage: getLocalizedText(task.contentData.initialMessage, _lang),
           npcName: getLocalizedText(task.contentData.callerName, _lang),
+          onComplete: onComplete,
+        );
+      case 'PHOTO_CHALLENGE':
+        return PhotoTaskWidget(
+          targetDescription: getLocalizedText(task.contentData.targetDescription, _lang),
           onComplete: onComplete,
         );
       case 'INCOMING_CALL':

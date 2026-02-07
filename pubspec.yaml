@@ -1,0 +1,35 @@
+name: riddlealley_mobile
+description: "RiddleAlley Mobile App (Flutter Port)"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  # Core
+  go_router: ^13.0.0
+  flutter_riverpod: ^2.4.9
+  # Network & Data
+  supabase_flutter: ^2.3.0
+  http: ^1.2.0
+  # UI
+  google_fonts: ^6.1.0
+  flutter_animate: ^4.5.0
+  # Maps & Location (Crucial for RiddleAlley)
+  flutter_map: ^6.1.0
+  geolocator: ^10.1.0
+  latlong2: ^0.9.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/

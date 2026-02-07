@@ -59,7 +59,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           GameHUD(
             score: gameState.team?.score ?? 0,
             stageTitle: getLocalizedText(activeTask.title, _lang),
-            distance: showMap ? 150 : null, // Mock distance for now
+            distance: showMap ? ref.watch(distanceProvider(LatLng(activeTask.locationLat ?? 0, activeTask.locationLng ?? 0))) : null,
             onMenuClick: () => _scaffoldKey.currentState?.openEndDrawer(),
           ),
           Expanded(
@@ -70,22 +70,65 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     );
   }
 
+import 'package:latlong2/latlong2.dart';
+import '../../../shared/providers/location_provider.dart';
+import 'widgets/game_map_widget.dart';
+import 'widgets/qr_task_widget.dart';
+import 'widgets/abcd_task_widget.dart';
+
+// ... inside _GameScreenState class ...
+
   Widget _buildMapView(Task task) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.map, size: 64, color: Colors.blue),
-          const SizedBox(height: 16),
-          Text("NAVIGATE TO: ${task.locationLat}, ${task.locationLng}", 
-            style: const TextStyle(color: Colors.white)),
-          const SizedBox(height: 32),
-          ElevatedButton(
-            onPressed: () => ref.read(gameStateProvider.notifier).completeTask('ARRIVED', 50),
-            child: const Text("SIMULATE ARRIVAL"),
-          )
-        ],
-      ),
+    final target = LatLng(task.locationLat ?? 0, task.locationLng ?? 0);
+    final distance = ref.watch(distanceProvider(target));
+    final bool isAtTarget = distance != null && distance <= (task.radiusMeters ?? 50);
+
+    return Column(
+      children: [
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: GameMapWidget(
+              targetLat: task.locationLat ?? 0,
+              targetLng: task.locationLng ?? 0,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: SizedBox(
+            width: double.infinity,
+            height: 80,
+            child: ElevatedButton(
+              onPressed: isAtTarget 
+                ? () => ref.read(gameStateProvider.notifier).completeTask('ARRIVED', 50)
+                : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isAtTarget ? Colors.emerald : Colors.white10,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              ),
+              child: isAtTarget 
+                ? const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.check_circle, size: 32),
+                      SizedBox(width: 12),
+                      Text("GO TO MISSION", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    ],
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text("APPROACH THE TARGET", style: TextStyle(fontSize: 12, color: Colors.white54)),
+                      Text("${distance?.round() ?? '...'} M REMAINING", 
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                    ],
+                  ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

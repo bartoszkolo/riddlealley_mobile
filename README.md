@@ -31,3 +31,4 @@ Urban escape quests in your pocket. This app handles:
 ## Project Structure
 - `lib/src` - Feature-based architecture
 - `lib/shared` - Shared components and utilities
+# riddlealley_mobile

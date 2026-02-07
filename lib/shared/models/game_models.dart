@@ -51,6 +51,7 @@ class Team {
   final DateTime? finishTime;
   final int score;
   final String? teamName;
+  final List<int> revealedHints;
 
   Team({
     required this.id,
@@ -61,6 +62,7 @@ class Team {
     this.finishTime,
     this.score = 0,
     this.teamName,
+    this.revealedHints = const [],
   });
 
   factory Team.fromJson(Map<String, dynamic> json) {
@@ -73,6 +75,7 @@ class Team {
       finishTime: json['finish_time'] != null ? DateTime.parse(json['finish_time']) : null,
       score: json['score'] ?? 0,
       teamName: json['team_name'],
+      revealedHints: List<int>.from(json['revealed_hints'] ?? []),
     );
   }
 }

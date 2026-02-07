@@ -145,27 +145,45 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     );
   }
 
+import 'widgets/hints_widget.dart';
+import 'widgets/photo_task_widget.dart';
+
+// ... inside _GameScreenState class ...
+
   Widget _buildTaskView(Task task) {
     final onComplete = ref.read(gameStateProvider.notifier).completeTask;
+    final gameState = ref.watch(gameStateProvider);
+    final revealedHints = gameState.team?.revealedHints ?? [];
 
     return Container(
       padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (task.taskType != 'AI_CHAT' && task.taskType != 'INCOMING_CALL' && task.taskType != 'PHOTO_CHALLENGE')
-            Padding(
-              padding: const EdgeInsets.only(bottom: 24.0),
-              child: Text(
-                getLocalizedText(task.description, _lang),
-                style: const TextStyle(color: Colors.white70, fontSize: 16, height: 1.5),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (task.taskType != 'AI_CHAT' && task.taskType != 'INCOMING_CALL' && task.taskType != 'PHOTO_CHALLENGE')
+              Padding(
+                padding: const EdgeInsets.only(bottom: 24.0),
+                child: Text(
+                  getLocalizedText(task.description, _lang),
+                  style: const TextStyle(color: Colors.white70, fontSize: 16, height: 1.5),
+                ),
               ),
-            ),
-          
-          Expanded(
-            child: _buildSpecificTask(task, onComplete),
-          ),
-        ],
+            
+            _buildSpecificTask(task, onComplete),
+
+            if (task.contentData.hints != null && task.contentData.hints!.isNotEmpty) ...[
+              const SizedBox(height: 32),
+              const Divider(color: Colors.white10),
+              const SizedBox(height: 24),
+              HintsWidget(
+                hints: task.contentData.hints!,
+                revealedIndices: revealedHints,
+                lang: _lang,
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

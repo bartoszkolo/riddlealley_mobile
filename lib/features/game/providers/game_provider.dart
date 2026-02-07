@@ -65,7 +65,6 @@ class GameNotifier extends StateNotifier<GameStateData> {
     try {
       state = state.copyWith(isLoading: true, error: null);
 
-      // 1. Fetch Team
       final teamRes = await _supabase
           .from('teams')
           .select()
@@ -79,7 +78,6 @@ class GameNotifier extends StateNotifier<GameStateData> {
         return;
       }
 
-      // 2. Fetch Active Task
       if (team.currentTaskId != null) {
         final taskRes = await _supabase
             .from('tasks')
@@ -97,6 +95,27 @@ class GameNotifier extends StateNotifier<GameStateData> {
     }
   }
 
+  Future<void> revealHint(int hintIndex, int cost) async {
+    final currentTeam = state.team;
+    if (currentTeam == null) return;
+
+    try {
+      final newScore = currentTeam.score - cost;
+      final newRevealedHints = [...currentTeam.revealedHints, hintIndex];
+
+      await _supabase.from('teams').update({
+        'score': newScore,
+        'revealed_hints': newRevealedHints,
+      }).eq('id', currentTeam.id);
+
+      // Refresh state from DB
+      await loadInitialState();
+      await VibrationService.light();
+    } catch (e) {
+      state = state.copyWith(error: "Failed to reveal hint: $e");
+    }
+  }
+
   Future<void> completeTask(String answer, int points) async {
     final currentTeam = state.team;
     final currentTask = state.activeTask;
@@ -104,11 +123,8 @@ class GameNotifier extends StateNotifier<GameStateData> {
 
     try {
       state = state.copyWith(isLoading: true);
-      
-      // Success Haptic Feedback
       await VibrationService.success();
 
-      // 1. Find next task
       final nextTaskRes = await _supabase
           .from('tasks')
           .select('id')
@@ -120,10 +136,10 @@ class GameNotifier extends StateNotifier<GameStateData> {
 
       final nextTaskId = nextTaskRes?['id'];
 
-      // 2. Update Team in DB
       final updates = {
         'score': currentTeam.score + points,
         'current_task_id': nextTaskId,
+        'revealed_hints': [], // Reset hints for next task
       };
 
       if (nextTaskId == null) {
@@ -132,7 +148,6 @@ class GameNotifier extends StateNotifier<GameStateData> {
 
       await _supabase.from('teams').update(updates).eq('id', currentTeam.id);
 
-      // 3. Refresh State
       if (nextTaskId == null) {
         state = state.copyWith(
           isGameFinished: true,
@@ -141,6 +156,7 @@ class GameNotifier extends StateNotifier<GameStateData> {
             ...currentTeam.toJsonForUpdate(),
             'score': currentTeam.score + points,
             'finish_time': updates['finish_time'],
+            'revealed_hints': [],
           }),
         );
       } else {
@@ -164,6 +180,7 @@ extension TeamExt on Team {
       'finish_time': finishTime?.toIso8601String(),
       'score': score,
       'team_name': teamName,
+      'revealed_hints': revealedHints,
     };
   }
 }

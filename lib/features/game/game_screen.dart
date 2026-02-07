@@ -23,57 +23,74 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final String _lang = 'pl'; // Future: use a language provider
 
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../shared/widgets/grid_background.dart';
+
+// ... inside _GameScreenState ...
+
   @override
   Widget build(BuildContext context) {
     final gameState = ref.watch(gameStateProvider);
     const bgDark = Color(0xFF0F172A);
 
-    if (gameState.isLoading) {
-      return const Scaffold(
-        backgroundColor: bgDark,
-        body: Center(child: CircularProgressIndicator(color: Color(0xFFFF0040))),
-      );
-    }
-
-    if (gameState.error != null) {
-      return Scaffold(
-        backgroundColor: bgDark,
-        body: Center(child: Text(gameState.error!, style: const TextStyle(color: Colors.red))),
-      );
-    }
-
-    if (gameState.isGameFinished) {
-      return _buildCompletionScreen(gameState);
-    }
-
-    final activeTask = gameState.activeTask;
-    if (activeTask == null) {
-      return const Scaffold(
-        backgroundColor: bgDark,
-        body: Center(child: Text("NO ACTIVE MISSION", style: TextStyle(color: Colors.white54))),
-      );
-    }
-
-    final bool showMap = activeTask.taskType == 'NAVIGATE';
-
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: bgDark,
       endDrawer: const AppDrawer(),
-      body: Column(
+      body: Stack(
         children: [
-          GameHUD(
-            score: gameState.team?.score ?? 0,
-            stageTitle: getLocalizedText(activeTask.title, _lang),
-            distance: showMap ? ref.watch(distanceProvider(LatLng(activeTask.locationLat ?? 0, activeTask.locationLng ?? 0))) : null,
-            onMenuClick: () => _scaffoldKey.currentState?.openEndDrawer(),
+          // Background Grid
+          Positioned.fill(
+            child: CustomPaint(painter: GridBackgroundPainter()),
           ),
-          Expanded(
-            child: showMap ? _buildMapView(activeTask) : _buildTaskView(activeTask),
+          // Main UI
+          Column(
+            children: [
+              GameHUD(
+                score: gameState.team?.score ?? 0,
+                stageTitle: gameState.activeTask != null 
+                    ? getLocalizedText(gameState.activeTask!.title, _lang) 
+                    : "NO MISSION",
+                distance: gameState.activeTask?.taskType == 'NAVIGATE' 
+                    ? ref.watch(distanceProvider(LatLng(gameState.activeTask!.locationLat ?? 0, gameState.activeTask!.locationLng ?? 0))) 
+                    : null,
+                onMenuClick: () => _scaffoldKey.currentState?.openEndDrawer(),
+              ).animate().fadeIn(duration: 800.ms).slideY(begin: -1, end: 0),
+              
+              Expanded(
+                child: _buildMainContent(gameState),
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildMainContent(GameStateData gameState) {
+    if (gameState.isLoading) {
+      return const Center(child: CircularProgressIndicator(color: Color(0xFFFF0040)));
+    }
+
+    if (gameState.error != null) {
+      return Center(child: Text(gameState.error!, style: const TextStyle(color: Colors.red)));
+    }
+
+    if (gameState.isGameFinished) {
+      return _buildCompletionScreen(gameState).animate().scale(duration: 500.ms, curve: Curves.elasticOut);
+    }
+
+    final activeTask = gameState.activeTask;
+    if (activeTask == null) {
+      return const Center(child: Text("NO ACTIVE MISSION", style: TextStyle(color: Colors.white54)));
+    }
+
+    final bool showMap = activeTask.taskType == 'NAVIGATE';
+
+    return (showMap ? _buildMapView(activeTask) : _buildTaskView(activeTask))
+        .animate(key: ValueKey(activeTask.id))
+        .fadeIn(duration: 600.ms)
+        .slideX(begin: 0.1, end: 0);
   }
 
   Widget _buildMapView(Task task) {

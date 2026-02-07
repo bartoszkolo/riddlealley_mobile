@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../shared/models/task_model.dart';
 import '../../../shared/models/game_models.dart';
 import '../../../shared/providers/supabase_provider.dart';
+import '../../../shared/services/vibration_service.dart';
 
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError();
@@ -103,6 +104,9 @@ class GameNotifier extends StateNotifier<GameStateData> {
 
     try {
       state = state.copyWith(isLoading: true);
+      
+      // Success Haptic Feedback
+      await VibrationService.success();
 
       // 1. Find next task
       final nextTaskRes = await _supabase
@@ -143,6 +147,7 @@ class GameNotifier extends StateNotifier<GameStateData> {
         await loadInitialState();
       }
     } catch (e) {
+      await VibrationService.error();
       state = state.copyWith(isLoading: false, error: e.toString());
     }
   }

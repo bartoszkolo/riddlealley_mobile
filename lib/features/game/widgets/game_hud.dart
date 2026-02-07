@@ -30,6 +30,10 @@ class GameHUD extends StatelessWidget {
         bottom: false,
         child: Row(
           children: [
+import 'package:flutter_animate/flutter_animate.dart';
+
+// ... inside build method ...
+
             // XP Display
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -52,8 +56,11 @@ class GameHUD extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
+            ).animate(onPlay: (controller) => controller.repeat())
+             .shimmer(duration: 2.seconds, color: neonRed.withOpacity(0.2)),
+            
             const SizedBox(width: 12),
+            
             // Mission Title
             Expanded(
               child: Column(
@@ -83,6 +90,7 @@ class GameHUD extends StatelessWidget {
                 ],
               ),
             ),
+            
             // Distance if available
             if (distance != null) ...[
               Container(
@@ -94,7 +102,9 @@ class GameHUD extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    const Icon(LucideIcons.navigation, color: Colors.blue, size: 14),
+                    const Icon(LucideIcons.navigation, color: Colors.blue, size: 14)
+                        .animate(onPlay: (controller) => controller.repeat())
+                        .shake(duration: 1.seconds),
                     const SizedBox(width: 4),
                     Text(
                       '${distance!.round()}M',
@@ -106,7 +116,8 @@ class GameHUD extends StatelessWidget {
                     ),
                   ],
                 ),
-              ),
+              ).animate(onPlay: (controller) => controller.repeat(reverse: true))
+               .glow(color: Colors.blue.withOpacity(0.2), radius: 5),
               const SizedBox(width: 8),
             ],
             // Menu Button

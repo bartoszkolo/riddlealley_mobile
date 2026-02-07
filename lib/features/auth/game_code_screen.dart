@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../game/game_screen.dart';
 
 class GameCodeScreen extends StatefulWidget {
   const GameCodeScreen({super.key});
@@ -9,23 +10,32 @@ class GameCodeScreen extends StatefulWidget {
   State<GameCodeScreen> createState() => _GameCodeScreenState();
 }
 
+enum AuthStep { enterCode, enterTeamName }
+
 class _GameCodeScreenState extends State<GameCodeScreen> {
-  final _codeController = TextEditingController();
+  // State
+  AuthStep _currentStep = AuthStep.enterCode;
   bool _isLoading = false;
   String? _error;
+
+  // Data
+  Map<String, dynamic>? _verifiedCodeData;
+
+  // Controllers
+  final _codeController = TextEditingController();
+  final _teamNameController = TextEditingController();
 
   @override
   void dispose() {
     _codeController.dispose();
+    _teamNameController.dispose();
     super.dispose();
   }
 
-  Future<void> _submitCode() async {
-    final code = _codeController.text.trim();
-    if (code.isEmpty) {
-      setState(() => _error = 'Please enter a mission code');
-      return;
-    }
+  // --- Logic: Phase 1 (Verify Code) ---
+  Future<void> _verifyCode() async {
+    final code = _codeController.text.trim().toUpperCase();
+    if (code.isEmpty) return;
 
     setState(() {
       _isLoading = true;
@@ -33,60 +43,112 @@ class _GameCodeScreenState extends State<GameCodeScreen> {
     });
 
     try {
-      // Direct call to Supabase Edge Function or Table to validate code
-      // Assuming a 'check_code' function or simple query
-      // For now, mirroring PWA logic if it was available, but here we'll assume
-      // we check against a table 'game_codes' or similar, OR just a stub for now.
-
-      // REAL IMPLEMENTATION STUB:
-      /*
       final response = await Supabase.instance.client
-          .from('games')
+          .from('access_codes')
           .select()
-          .eq('access_code', code) // hypothetical column
+          .eq('code', code)
           .maybeSingle();
-      */
 
-      // Since I don't see the exact backend logic for code validation in the PWA files I read yet
-      // (it was likely in an API route I didn't deep dive into), I'll keep the logic generic
-      // but ready for the real table name.
+      if (response == null) {
+        throw 'Invalid access code';
+      }
 
-      await Future.delayed(const Duration(milliseconds: 800)); // Network sim
+      final data = response as Map<String, dynamic>;
 
-      // Temporary logic until you confirm table structure for codes
-      if (code.length > 3) {
-        if (mounted) {
-           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Connecting to mission...'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          // Navigate to Map/Game Screen
+      // Check status
+      if (data['status'] == 'expired') {
+        throw 'This code has expired';
+      }
+
+      // Check 24h expiration logic if activated
+      if (data['activated_at'] != null) {
+        final activatedAt = DateTime.parse(data['activated_at']);
+        final now = DateTime.now();
+        final difference = now.difference(activatedAt);
+        if (difference.inHours > 24) {
+          throw 'Code expired (24h limit reached)';
         }
-      } else {
-        throw 'Invalid mission code format';
       }
 
+      setState(() {
+        _verifiedCodeData = data;
+        _currentStep = AuthStep.enterTeamName;
+      });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString();
-        });
-      }
+      setState(() => _error = e.toString().replaceAll('Exception: ', ''));
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      setState(() => _isLoading = false);
     }
   }
 
+  // --- Logic: Phase 2 (Create Team) ---
+  Future<void> _createTeam() async {
+    final teamName = _teamNameController.text.trim();
+    if (teamName.isEmpty) return;
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final gameId = _verifiedCodeData!['game_id'];
+      final code = _verifiedCodeData!['code'];
+
+      // 1. Fetch first task
+      final taskResponse = await Supabase.instance.client
+          .from('tasks')
+          .select('id')
+          .eq('game_id', gameId)
+          .order('order_index', ascending: true)
+          .limit(1)
+          .maybeSingle();
+
+      if (taskResponse == null) {
+        throw 'Game configuration error: No tasks found';
+      }
+
+      final firstTaskId = taskResponse['id'];
+
+      // 2. Create Team
+      final teamResponse = await Supabase.instance.client
+          .from('teams')
+          .insert({
+            'game_id': gameId,
+            'code_used': code,
+            'current_task_id': firstTaskId,
+            'start_time': DateTime.now().toIso8601String(),
+            'team_name': teamName,
+          })
+          .select()
+          .single();
+
+      // 3. Mark code as activated (if not already)
+      if (_verifiedCodeData!['activated_at'] == null) {
+        await Supabase.instance.client
+            .from('access_codes')
+            .update({'activated_at': DateTime.now().toIso8601String()})
+            .eq('code', code);
+      }
+
+      // 4. Navigate to Game
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const GameScreen()),
+        );
+      }
+    } catch (e) {
+      setState(() => _error = e.toString().replaceAll('Exception: ', ''));
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  // --- UI ---
   @override
   Widget build(BuildContext context) {
-    // RiddleAlley Theme Colors
     const neonRed = Color(0xFFFF0040);
-    const bgDark = Color(0xFF0F172A); // Slate 950 roughly
-    const bgCard = Color(0xFF1E293B); // Slate 800
+    const bgDark = Color(0xFF0F172A);
 
     return Scaffold(
       backgroundColor: bgDark,
@@ -97,7 +159,7 @@ class _GameCodeScreenState extends State<GameCodeScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Logo / Title area
+              // Header
               Center(
                 child: RichText(
                   text: TextSpan(
@@ -116,107 +178,176 @@ class _GameCodeScreenState extends State<GameCodeScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
-              Text(
-                'Enter your mission code to begin',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  color: Colors.white54,
-                  fontSize: 16,
-                ),
-              ),
               const SizedBox(height: 48),
 
-              // Code Input
-              Container(
-                decoration: BoxDecoration(
-                  color: bgCard,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: _error != null ? neonRed : Colors.white10,
-                    width: 2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                child: TextField(
-                  controller: _codeController,
-                  style: GoogleFonts.jetbrainsMono(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    letterSpacing: 4,
-                  ),
-                  textAlign: TextAlign.center,
-                  textCapitalization: TextCapitalization.characters,
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    hintText: 'CODE',
-                    hintStyle: TextStyle(
-                      color: Colors.white24,
-                      letterSpacing: 4,
-                    ),
-                  ),
-                  onSubmitted: (_) => _submitCode(),
-                ),
-              ),
-
-              // Error Message
-              if (_error != null) ...[
-                const SizedBox(height: 16),
-                Text(
-                  _error!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: neonRed,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ] else
-                const SizedBox(height: 16),
-
-              const SizedBox(height: 32),
-
-              // Action Button
-              ElevatedButton(
-                onPressed: _isLoading ? null : _submitCode,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: neonRed,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 0,
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : Text(
-                        'START MISSION',
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
-                        ),
-                      ),
+              // Steps
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _currentStep == AuthStep.enterCode
+                    ? _buildCodeInput(neonRed)
+                    : _buildTeamInput(neonRed),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCodeInput(Color accentColor) {
+    return Column(
+      key: const ValueKey('code_step'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'ENTER MISSION CODE',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.inter(
+            color: Colors.white54,
+            fontSize: 12,
+            letterSpacing: 2,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E293B),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _error != null ? accentColor : Colors.white10,
+            ),
+          ),
+          child: TextField(
+            controller: _codeController,
+            style: GoogleFonts.jetbrainsMono(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              letterSpacing: 4,
+            ),
+            textAlign: TextAlign.center,
+            textCapitalization: TextCapitalization.characters,
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              hintText: 'CODE',
+              hintStyle: TextStyle(color: Colors.white24),
+            ),
+            onSubmitted: (_) => _verifyCode(),
+          ),
+        ),
+        if (_error != null) ...[
+          const SizedBox(height: 16),
+          Text(
+            _error!,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: accentColor, fontWeight: FontWeight.bold),
+          ),
+        ],
+        const SizedBox(height: 32),
+        ElevatedButton(
+          onPressed: _isLoading ? null : _verifyCode,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: accentColor,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: _isLoading
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                )
+              : const Text('VERIFY CODE', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTeamInput(Color accentColor) {
+    return Column(
+      key: const ValueKey('team_step'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'TEAM NAME',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.inter(
+            color: Colors.white54,
+            fontSize: 12,
+            letterSpacing: 2,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E293B),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _error != null ? accentColor : Colors.white10,
+            ),
+          ),
+          child: TextField(
+            controller: _teamNameController,
+            style: GoogleFonts.inter(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+            textAlign: TextAlign.center,
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              hintText: 'Enter name...',
+              hintStyle: TextStyle(color: Colors.white24),
+            ),
+            onSubmitted: (_) => _createTeam(),
+          ),
+        ),
+        if (_error != null) ...[
+          const SizedBox(height: 16),
+          Text(
+            _error!,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: accentColor, fontWeight: FontWeight.bold),
+          ),
+        ],
+        const SizedBox(height: 32),
+        ElevatedButton(
+          onPressed: _isLoading ? null : _createTeam,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.emerald,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: _isLoading
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                )
+              : const Text('START MISSION', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
+        ),
+        const SizedBox(height: 16),
+        TextButton(
+          onPressed: () {
+            setState(() {
+              _currentStep = AuthStep.enterCode;
+              _error = null;
+              _teamNameController.clear();
+            });
+          },
+          child: const Text('Back', style: TextStyle(color: Colors.white54)),
+        ),
+      ],
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class GameHUD extends StatelessWidget {
   final int score;
@@ -24,16 +25,12 @@ class GameHUD extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: const Color(0xFF0F172A).withOpacity(0.8),
-        border: Border(bottom: const BorderSide(color: Colors.white10)),
+        border: const Border(bottom: BorderSide(color: Colors.white10)),
       ),
       child: SafeArea(
         bottom: false,
         child: Row(
           children: [
-import 'package:flutter_animate/flutter_animate.dart';
-
-// ... inside build method ...
-
             // XP Display
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -48,7 +45,7 @@ import 'package:flutter_animate/flutter_animate.dart';
                   const SizedBox(width: 4),
                   Text(
                     '$score XP',
-                    style: GoogleFonts.jetbrainsMono(
+                    style: const TextStyle(
                       color: neonRed,
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
@@ -61,7 +58,6 @@ import 'package:flutter_animate/flutter_animate.dart';
             
             const SizedBox(width: 12),
             
-            // Mission Title
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -91,7 +87,6 @@ import 'package:flutter_animate/flutter_animate.dart';
               ),
             ),
             
-            // Distance if available
             if (distance != null) ...[
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -108,7 +103,7 @@ import 'package:flutter_animate/flutter_animate.dart';
                     const SizedBox(width: 4),
                     Text(
                       '${distance!.round()}M',
-                      style: GoogleFonts.jetbrainsMono(
+                      style: const TextStyle(
                         color: Colors.blue,
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
@@ -117,10 +112,10 @@ import 'package:flutter_animate/flutter_animate.dart';
                   ],
                 ),
               ).animate(onPlay: (controller) => controller.repeat(reverse: true))
-               .glow(color: Colors.blue.withOpacity(0.2), radius: 5),
+               .boxShadow(begin: const BoxShadow(blurRadius: 0), end: const BoxShadow(blurRadius: 10, color: Colors.blue)),
               const SizedBox(width: 8),
             ],
-            // Menu Button
+            
             IconButton(
               icon: const Icon(LucideIcons.menu, color: Colors.white),
               onPressed: onMenuClick,

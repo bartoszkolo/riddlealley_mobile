@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 class ChatMessage {
@@ -43,14 +42,10 @@ class _AiChatWidgetState extends State<AiChatWidget> {
     super.initState();
     _messages.add(ChatMessage(text: widget.initialMessage, isUser: false));
     
-    // Initialize Gemini
-    // For now we use a placeholder key, user should replace it
     _model = GenerativeModel(
       model: 'gemini-1.5-flash',
       apiKey: 'GEMINI_API_KEY', 
-      systemInstruction: Content.system('${widget.systemPrompt}
-
-IMPORTANT: If the user convinces you to reveal the secret password or password is correct, you MUST include the phrase "ACCESS_GRANTED_SUCCESS" in your response.'),
+      systemInstruction: Content.system('${widget.systemPrompt}\n\nIMPORTANT: If the user convinces you to reveal the secret password or password is correct, you MUST include the phrase "ACCESS_GRANTED_SUCCESS" in your response.'),
     );
     _chat = _model.startChat();
   }
@@ -88,7 +83,6 @@ IMPORTANT: If the user convinces you to reveal the secret password or password i
       });
       _scrollToBottom();
 
-      // Check for success trigger
       if (reply.contains("ACCESS_GRANTED_SUCCESS") || reply.toLowerCase().contains(widget.secretPassword.toLowerCase())) {
         Future.delayed(const Duration(seconds: 1), () {
           widget.onComplete(text, 200);
@@ -108,7 +102,6 @@ IMPORTANT: If the user convinces you to reveal the secret password or password i
 
     return Column(
       children: [
-        // Header
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -133,7 +126,6 @@ IMPORTANT: If the user convinces you to reveal the secret password or password i
           ),
         ),
         const SizedBox(height: 16),
-        // Chat Area
         Expanded(
           child: ListView.builder(
             controller: _scrollController,
@@ -167,7 +159,6 @@ IMPORTANT: If the user convinces you to reveal the secret password or password i
             padding: EdgeInsets.all(8.0),
             child: LinearProgressIndicator(color: neonRed, backgroundColor: Colors.transparent),
           ),
-        // Input
         Padding(
           padding: const EdgeInsets.only(top: 8.0),
           child: Row(

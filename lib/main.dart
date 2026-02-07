@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'features/auth/game_code_screen.dart';
+import 'features/game/game_screen.dart';
 import 'features/game/providers/game_provider.dart';
 
 Future<void> main() async {
@@ -37,13 +38,14 @@ class RiddleAlleyApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFFF0040), // Neon Red
+          seedColor: const Color(0xFFFF0040),
           brightness: Brightness.dark,
-          surface: const Color(0xFF0F172A), // Slate 950
+          surface: const Color(0xFF0F172A),
         ),
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFF0F172A),
       ),
+      // Removed const because GameScreen/GameCodeScreen are not always constant
       home: teamId != null ? const GameScreen() : const GameCodeScreen(),
     );
   }

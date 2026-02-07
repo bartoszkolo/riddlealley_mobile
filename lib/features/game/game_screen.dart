@@ -10,6 +10,7 @@ import 'widgets/abcd_task_widget.dart';
 import 'widgets/ai_chat_widget.dart';
 import 'widgets/incoming_call_widget.dart';
 import 'widgets/photo_task_widget.dart';
+import 'widgets/hints_widget.dart';
 import '../../../shared/models/task_model.dart';
 import '../../../shared/providers/location_provider.dart';
 import '../../shared/widgets/app_drawer.dart';
@@ -24,7 +25,7 @@ class GameScreen extends ConsumerStatefulWidget {
 
 class _GameScreenState extends ConsumerState<GameScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  final String _lang = 'pl'; // Future: use a language provider
+  final String _lang = 'pl';
 
   @override
   Widget build(BuildContext context) {
@@ -37,11 +38,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       endDrawer: const AppDrawer(),
       body: Stack(
         children: [
-          // Background Grid
           Positioned.fill(
             child: CustomPaint(painter: GridBackgroundPainter()),
           ),
-          // Main UI
           Column(
             children: [
               GameHUD(
@@ -117,7 +116,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                 ? () => ref.read(gameStateProvider.notifier).completeTask('ARRIVED', 50)
                 : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: isAtTarget ? Colors.emerald : Colors.white10,
+                backgroundColor: isAtTarget ? Colors.green : Colors.white10,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
               ),
@@ -144,11 +143,6 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       ],
     );
   }
-
-import 'widgets/hints_widget.dart';
-import 'widgets/photo_task_widget.dart';
-
-// ... inside _GameScreenState class ...
 
   Widget _buildTaskView(Task task) {
     final onComplete = ref.read(gameStateProvider.notifier).completeTask;
@@ -223,7 +217,7 @@ import 'widgets/photo_task_widget.dart';
       case 'NARRATIVE':
         return Column(
           children: [
-            const Spacer(),
+            const SizedBox(height: 40),
             SizedBox(
               width: double.infinity,
               height: 64,
@@ -271,7 +265,6 @@ import 'widgets/photo_task_widget.dart';
             const SizedBox(height: 48),
             ElevatedButton(
               onPressed: () {
-                // Clear team and restart
                 ref.read(teamIdProvider.notifier).state = null;
                 ref.read(sharedPreferencesProvider).remove('riddle_team_id');
               },

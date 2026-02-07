@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'features/auth/game_code_screen.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Supabase.initialize(
+    url: 'https://kesyrzyuflppgiskptik.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtlc3lyenl1ZmxwcGdpc2twdGlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0NjA5NzAsImV4cCI6MjA3OTAzNjk3MH0.NRz2JwaSgKxoLkg1zFkW2FhmQSxwf3dtb8KNjFXMn9E',
+  );
+
   runApp(
     const ProviderScope(
       child: RiddleAlleyApp(),
@@ -16,40 +25,17 @@ class RiddleAlleyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'RiddleAlley',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1A1A1A), // Dark vibe
+          seedColor: const Color(0xFFFF0040), // Neon Red
           brightness: Brightness.dark,
+          surface: const Color(0xFF0F172A), // Slate 950
         ),
         useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFF0F172A),
       ),
-      home: const PlaceholderHome(),
-    );
-  }
-}
-
-class PlaceholderHome extends StatelessWidget {
-  const PlaceholderHome({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('RiddleAlley Mobile'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.map, size: 64, color: Colors.amber),
-            const SizedBox(height: 16),
-            Text(
-              'Urban Quests Loading...',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-          ],
-        ),
-      ),
+      home: const GameCodeScreen(),
     );
   }
 }

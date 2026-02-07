@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'features/auth/game_code_screen.dart';
+import 'features/game/providers/game_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  final prefs = await SharedPreferences.getInstance();
 
   await Supabase.initialize(
     url: 'https://kesyrzyuflppgiskptik.supabase.co',
@@ -12,17 +16,22 @@ Future<void> main() async {
   );
 
   runApp(
-    const ProviderScope(
-      child: RiddleAlleyApp(),
+    ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+      ],
+      child: const RiddleAlleyApp(),
     ),
   );
 }
 
-class RiddleAlleyApp extends StatelessWidget {
+class RiddleAlleyApp extends ConsumerWidget {
   const RiddleAlleyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final teamId = ref.watch(teamIdProvider);
+
     return MaterialApp(
       title: 'RiddleAlley',
       debugShowCheckedModeBanner: false,
@@ -35,7 +44,7 @@ class RiddleAlleyApp extends StatelessWidget {
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFF0F172A),
       ),
-      home: const GameCodeScreen(),
+      home: teamId != null ? const GameScreen() : const GameCodeScreen(),
     );
   }
 }

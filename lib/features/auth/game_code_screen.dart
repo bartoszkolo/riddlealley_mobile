@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../shared/providers/supabase_provider.dart';
+import '../game/providers/game_provider.dart';
 import '../game/game_screen.dart';
 
-class GameCodeScreen extends StatefulWidget {
+class GameCodeScreen extends ConsumerStatefulWidget {
   const GameCodeScreen({super.key});
 
   @override
-  State<GameCodeScreen> createState() => _GameCodeScreenState();
+  ConsumerState<GameCodeScreen> createState() => _GameCodeScreenState();
 }
 
 enum AuthStep { enterCode, enterTeamName }
 
-class _GameCodeScreenState extends State<GameCodeScreen> {
+class _GameCodeScreenState extends ConsumerState<GameCodeScreen> {
   // State
   AuthStep _currentStep = AuthStep.enterCode;
   bool _isLoading = false;
@@ -43,7 +46,8 @@ class _GameCodeScreenState extends State<GameCodeScreen> {
     });
 
     try {
-      final response = await Supabase.instance.client
+      final supabase = ref.read(supabaseClientProvider);
+      final response = await supabase
           .from('access_codes')
           .select()
           .eq('code', code)
@@ -92,11 +96,12 @@ class _GameCodeScreenState extends State<GameCodeScreen> {
     });
 
     try {
+      final supabase = ref.read(supabaseClientProvider);
       final gameId = _verifiedCodeData!['game_id'];
       final code = _verifiedCodeData!['code'];
 
       // 1. Fetch first task
-      final taskResponse = await Supabase.instance.client
+      final taskResponse = await supabase
           .from('tasks')
           .select('id')
           .eq('game_id', gameId)
@@ -111,7 +116,7 @@ class _GameCodeScreenState extends State<GameCodeScreen> {
       final firstTaskId = taskResponse['id'];
 
       // 2. Create Team
-      final teamResponse = await Supabase.instance.client
+      final teamResponse = await supabase
           .from('teams')
           .insert({
             'game_id': gameId,
@@ -125,13 +130,20 @@ class _GameCodeScreenState extends State<GameCodeScreen> {
 
       // 3. Mark code as activated (if not already)
       if (_verifiedCodeData!['activated_at'] == null) {
-        await Supabase.instance.client
+        await supabase
             .from('access_codes')
             .update({'activated_at': DateTime.now().toIso8601String()})
             .eq('code', code);
       }
 
-      // 4. Navigate to Game
+      // 4. Save to SharedPreferences
+      final prefs = ref.read(sharedPreferencesProvider);
+      await prefs.setString('riddle_team_id', teamResponse['id']);
+      
+      // Update teamIdProvider state
+      ref.read(teamIdProvider.notifier).state = teamResponse['id'];
+
+      // 5. Navigate to Game
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const GameScreen()),

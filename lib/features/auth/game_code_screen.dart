@@ -90,7 +90,7 @@ class _GameCodeScreenState extends ConsumerState<GameCodeScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Center(child: Text("RIDDLE ALLEY", style: GoogleFonts.inter(fontSize: 32, fontWeight: FontWeight.black, color: const Color(0xFFFF0040)))),
+              Center(child: Text("RIDDLE ALLEY", style: GoogleFonts.inter(fontSize: 32, fontWeight: FontWeight.w900, color: const Color(0xFFFF0040)))),
               const SizedBox(height: 48),
               _currentStep == AuthStep.enterCode ? _buildInput("ENTER CODE", _codeController, _verifyCode) : _buildInput("TEAM NAME", _teamNameController, _createTeam),
               if (_error != null) Padding(padding: const EdgeInsets.all(8.0), child: Text(_error!, style: const TextStyle(color: Colors.red))),

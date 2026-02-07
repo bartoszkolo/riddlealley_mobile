@@ -114,7 +114,7 @@ class _PhotoTaskWidgetState extends State<PhotoTaskWidget> {
                               children: [
                                 const CircularProgressIndicator(color: neonRed),
                                 const SizedBox(height: 16),
-                                Text("ANALYZING EVIDENCE...", style: GoogleFonts.jetbrainsMono(color: Colors.white70, fontSize: 12)),
+                                Text("ANALYZING EVIDENCE...", style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
                               ],
                             ),
                           ),

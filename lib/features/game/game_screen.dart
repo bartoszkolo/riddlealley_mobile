@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong2.dart';
 import 'providers/game_provider.dart';
 import 'widgets/game_hud.dart';
+import 'widgets/game_map_widget.dart';
+import 'widgets/qr_task_widget.dart';
+import 'widgets/abcd_task_widget.dart';
+import 'widgets/ai_chat_widget.dart';
+import 'widgets/incoming_call_widget.dart';
 import '../../../shared/models/task_model.dart';
+import '../../../shared/providers/location_provider.dart';
 import '../../shared/widgets/app_drawer.dart';
 
 class GameScreen extends ConsumerStatefulWidget {
@@ -14,7 +21,7 @@ class GameScreen extends ConsumerStatefulWidget {
 
 class _GameScreenState extends ConsumerState<GameScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  final String _lang = 'pl'; // Should be from a provider later
+  final String _lang = 'pl'; // Future: use a language provider
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +54,6 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       );
     }
 
-    // Determine view: Map or Task
     final bool showMap = activeTask.taskType == 'NAVIGATE';
 
     return Scaffold(
@@ -69,14 +75,6 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       ),
     );
   }
-
-import 'package:latlong2/latlong2.dart';
-import '../../../shared/providers/location_provider.dart';
-import 'widgets/game_map_widget.dart';
-import 'widgets/qr_task_widget.dart';
-import 'widgets/abcd_task_widget.dart';
-
-// ... inside _GameScreenState class ...
 
   Widget _buildMapView(Task task) {
     final target = LatLng(task.locationLat ?? 0, task.locationLng ?? 0);
@@ -132,41 +130,79 @@ import 'widgets/abcd_task_widget.dart';
     );
   }
 
-import 'widgets/qr_task_widget.dart';
-import 'widgets/abcd_task_widget.dart';
-
-// ... inside _GameScreenState class ...
-
   Widget _buildTaskView(Task task) {
     final onComplete = ref.read(gameStateProvider.notifier).completeTask;
 
-    return SingleChildScrollView(
+    return Container(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            getLocalizedText(task.description, _lang),
-            style: const TextStyle(color: Colors.white70, fontSize: 16, height: 1.5),
-          ),
-          const SizedBox(height: 32),
-          
-          if (task.taskType == 'QR_SCAN')
-            SizedBox(
-              height: 400,
-              child: QrTaskWidget(
-                expectedValue: task.contentData.qrCodeValue ?? '',
-                onComplete: onComplete,
+          if (task.taskType != 'AI_CHAT' && task.taskType != 'INCOMING_CALL')
+            Padding(
+              padding: const EdgeInsets.only(bottom: 24.0),
+              child: Text(
+                getLocalizedText(task.description, _lang),
+                style: const TextStyle(color: Colors.white70, fontSize: 16, height: 1.5),
               ),
-            )
-          else if (task.taskType == 'ABCD')
-            AbcdTaskWidget(
-              options: task.contentData.options ?? [],
-              onComplete: onComplete,
-              lang: _lang,
-            )
-          else
-            // Fallback for Riddle/Text
+            ),
+          
+          Expanded(
+            child: _buildSpecificTask(task, onComplete),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpecificTask(Task task, Function(String, int) onComplete) {
+    switch (task.taskType) {
+      case 'QR_SCAN':
+        return QrTaskWidget(
+          expectedValue: task.contentData.qrCodeValue ?? '',
+          onComplete: onComplete,
+        );
+      case 'ABCD':
+        return AbcdTaskWidget(
+          options: task.contentData.options ?? [],
+          onComplete: onComplete,
+          lang: _lang,
+        );
+      case 'AI_CHAT':
+        return AiChatWidget(
+          systemPrompt: getLocalizedText(task.contentData.systemPrompt, _lang),
+          secretPassword: task.contentData.secretPassword ?? '',
+          initialMessage: getLocalizedText(task.contentData.initialMessage, _lang),
+          npcName: getLocalizedText(task.contentData.callerName, _lang),
+          onComplete: onComplete,
+        );
+      case 'INCOMING_CALL':
+        return IncomingCallWidget(
+          callerName: getLocalizedText(task.contentData.callerName, _lang),
+          onAccept: () => onComplete('ACCEPTED', 50),
+        );
+      case 'TEXT_MESSAGE':
+      case 'NARRATIVE':
+        return Column(
+          children: [
+            const Spacer(),
+            SizedBox(
+              width: double.infinity,
+              height: 64,
+              child: ElevatedButton(
+                onPressed: () => onComplete('READ', 50),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF0040),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                ),
+                child: const Text("CONTINUE", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2)),
+              ),
+            ),
+          ],
+        );
+      default:
+        return Column(
+          children: [
             TextField(
               decoration: InputDecoration(
                 filled: true,
@@ -176,9 +212,9 @@ import 'widgets/abcd_task_widget.dart';
               ),
               onSubmitted: (val) => onComplete(val, 100),
             ),
-        ],
-      ),
-    );
+          ],
+        );
+    }
   }
 
   Widget _buildCompletionScreen(GameStateData state) {
@@ -197,9 +233,11 @@ import 'widgets/abcd_task_widget.dart';
             const SizedBox(height: 48),
             ElevatedButton(
               onPressed: () {
-                // Reset or Logout
+                // Clear team and restart
+                ref.read(teamIdProvider.notifier).state = null;
+                ref.read(sharedPreferencesProvider).remove('riddle_team_id');
               },
-              child: const Text("FINISH"),
+              child: const Text("RESTART MISSION"),
             )
           ],
         ),
